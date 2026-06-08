@@ -1,0 +1,46 @@
+name: linear-platform
+label: Linear
+kind: platform
+version: 0.1.0
+description: >
+  Linear Agent Sessions for Hermes Agent. Registers a native "linear" platform
+  adapter (no core patch): receives Linear webhooks, verifies the Linear-Signature
+  HMAC, opens/continues Agent Sessions, and streams the agent's work back as Linear
+  agent activities. Bring-your-own Linear OAuth app (actor=app); the plugin
+  self-hosts the OAuth callback on your deployment's own public URL — no Cloudflare
+  Worker required.
+author: Coflounder, LLC
+requires_env:
+  - name: LINEAR_WEBHOOK_SECRET
+    description: "Webhook signing secret from your Linear webhook (HMAC-SHA256 of the raw body)."
+    prompt: "Linear webhook secret"
+    password: true
+  - name: LINEAR_CLIENT_ID
+    description: "OAuth app client id (Linear -> Settings -> API -> OAuth applications)."
+    prompt: "Linear OAuth client id"
+    password: false
+  - name: LINEAR_CLIENT_SECRET
+    description: "OAuth app client secret. Mints the actor=app token; stored encrypted on the volume."
+    prompt: "Linear OAuth client secret"
+    password: true
+  - name: LINEAR_PUBLIC_URL
+    description: "Public HTTPS base URL the deployment is reachable at (e.g. your Tailscale Funnel host)."
+    prompt: "Public base URL"
+    password: false
+optional_env:
+  - name: LINEAR_API_KEY
+    description: "Optional: a Linear API key INSTEAD of OAuth (bot fallback; no Agent Sessions, plain comments)."
+    prompt: "Linear API key (optional)"
+    password: true
+  - name: LINEAR_PORT
+    description: "Local port for the adapter's HTTP server (webhook + OAuth callback). Default 8650."
+    prompt: "HTTP port"
+    password: false
+  - name: LINEAR_TEAM_IDS
+    description: "Optional comma-separated Linear team keys to filter (e.g. ENG,OPS). Empty = all."
+    prompt: "Team keys (optional)"
+    password: false
+  - name: LINEAR_HOME_CHANNEL
+    description: "Optional default issue id for cron / notification delivery."
+    prompt: "Home issue id (optional)"
+    password: false

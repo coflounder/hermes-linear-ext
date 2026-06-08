@@ -1,0 +1,11 @@
+[project]
+name = "hermes-linear-ext"
+version = "0.1.0"
+description = "Linear Agent Sessions for Hermes Agent — a zero-patch plugin."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+# Runtime deps (aiohttp, pyyaml) are provided by the Hermes host environment.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
