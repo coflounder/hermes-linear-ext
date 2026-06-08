@@ -51,9 +51,10 @@ def comment_input(issue_id: str, body: str, *, parent_id: Optional[str] = None) 
 class LinearGraphQL:
     """Thin async GraphQL client over a persistent aiohttp session."""
 
-    def __init__(self, token_getter, session=None):
-        # token_getter: () -> Optional[str]  (so a refreshed token is always used)
-        self._token_getter = token_getter
+    def __init__(self, token_provider, session=None):
+        # token_provider: async () -> Optional[str] — awaited per call so a
+        # freshly-refreshed token is always used (see adapter._ensure_token).
+        self._token_provider = token_provider
         self._session = session
 
     async def _ensure_session(self):
@@ -63,7 +64,7 @@ class LinearGraphQL:
         return self._session
 
     async def execute(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
-        token = self._token_getter()
+        token = await self._token_provider()
         if not token:
             return {"errors": [{"message": "no Linear token (OAuth not completed / API key unset)"}]}
         session = await self._ensure_session()

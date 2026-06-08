@@ -108,9 +108,10 @@ class LinearAdapter(BasePlatformAdapter):
         self.max_message_length = MAX_COMMENT_LENGTH
 
         self._tokens = oauth.TokenStore(os.path.join(_hermes_home(), TOKEN_FILENAME))
-        self._gql = graphql.LinearGraphQL(token_getter=self._current_token)
+        self._gql = graphql.LinearGraphQL(token_provider=self._ensure_token)
         self._sessions = activities.SessionRegistry()
         self._oauth_state: Optional[str] = None
+        self._token_lock = asyncio.Lock()
         self._runner = None  # aiohttp AppRunner
 
     # ----- identity -------------------------------------------------------
@@ -118,9 +119,37 @@ class LinearAdapter(BasePlatformAdapter):
     def name(self) -> str:
         return "Linear"
 
-    def _current_token(self) -> Optional[str]:
-        # Prefer the OAuth actor=app token; fall back to a plain API key.
-        return self._tokens.access_token() or (self._api_key or None)
+    async def _ensure_token(self) -> Optional[str]:
+        """Return a valid Linear token, refreshing the OAuth actor=app token if it
+        is at/near expiry (~24h TTL). Falls back to a plain API key. Lock-guarded
+        so concurrent activity posts refresh at most once."""
+        rec = self._tokens.load()
+        if not rec or not rec.get("access_token"):
+            return self._api_key or None
+        if not self._tokens.is_expired():
+            return rec["access_token"]
+        refresh = rec.get("refresh_token")
+        if not (refresh and self._client_id and self._client_secret):
+            return rec.get("access_token") or self._api_key or None  # can't refresh; best effort
+        async with self._token_lock:
+            rec = self._tokens.load()  # re-check under lock (another task may have refreshed)
+            if rec and not self._tokens.is_expired():
+                return rec["access_token"]
+            params = oauth.build_refresh_params(refresh, self._client_id, self._client_secret)
+            try:
+                session = await self._gql._ensure_session()
+                async with session.post(oauth.TOKEN_URL, data=params) as resp:
+                    new = await resp.json()
+            except Exception:  # noqa: BLE001
+                logger.exception("[linear] token refresh request failed")
+                return (rec or {}).get("access_token") or self._api_key or None
+            if "access_token" not in new:
+                logger.warning("[linear] token refresh rejected: %s", new)
+                return (rec or {}).get("access_token") or self._api_key or None
+            merged = {**(rec or {}), **new}  # keep old refresh_token if Linear omits a new one
+            self._tokens.save(merged)
+            logger.info("[linear] access token refreshed")
+            return merged["access_token"]
 
     # ----- lifecycle ------------------------------------------------------
     async def connect(self) -> bool:

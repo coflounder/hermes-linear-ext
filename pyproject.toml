@@ -1,6 +1,6 @@
 [project]
 name = "hermes-linear-ext"
-version = "0.1.0"
+version = "0.2.0"
 description = "Linear Agent Sessions for Hermes Agent — a zero-patch plugin."
 readme = "README.md"
 license = { text = "MIT" }

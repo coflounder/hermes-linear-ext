@@ -48,3 +48,23 @@ def test_token_store_roundtrip_and_expiry(tmp_path):
 
 def test_state_unique():
     assert oauth.gen_state() != oauth.gen_state()
+
+
+def test_build_refresh_params():
+    p = oauth.build_refresh_params("rtok", "cid", "sec")
+    assert p == {"refresh_token": "rtok", "client_id": "cid",
+                 "client_secret": "sec", "grant_type": "refresh_token"}
+
+
+def test_refresh_restamps_and_preserves_refresh_token(tmp_path):
+    clock = {"t": 1000}
+    st = oauth.TokenStore(tmp_path / "t.json", now=lambda: clock["t"])
+    st.save({"access_token": "a1", "refresh_token": "r1", "expires_in": 86399})
+    assert st.refresh_token() == "r1" and st.is_expired() is False
+    clock["t"] = 1000 + 86399
+    assert st.is_expired() is True
+    rec = st.load()
+    st.save({**rec, **{"access_token": "a2", "expires_in": 86399}})  # Linear omits refresh_token
+    assert st.access_token() == "a2"
+    assert st.refresh_token() == "r1"      # preserved
+    assert st.is_expired() is False        # obtained_at re-stamped on save

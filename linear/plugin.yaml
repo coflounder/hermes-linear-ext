@@ -1,7 +1,7 @@
 name: linear-platform
 label: Linear
 kind: platform
-version: 0.1.0
+version: 0.2.0
 description: >
   Linear Agent Sessions for Hermes Agent. Registers a native "linear" platform
   adapter (no core patch): receives Linear webhooks, verifies the Linear-Signature

@@ -61,6 +61,16 @@ def build_token_exchange_params(code: str, client_id: str, client_secret: str,
     }
 
 
+def build_refresh_params(refresh_token: str, client_id: str, client_secret: str) -> Dict[str, str]:
+    """Form body for the refresh-token grant. Linear access tokens expire ~24h."""
+    return {
+        "refresh_token": refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "refresh_token",
+    }
+
+
 class TokenStore:
     """Persist the app token on the volume at 0600. ``now`` is injectable for tests.
 
@@ -74,7 +84,7 @@ class TokenStore:
 
     def save(self, token: Dict[str, Any]) -> None:
         rec = dict(token)
-        if "expires_in" in rec and "obtained_at" not in rec:
+        if "expires_in" in rec:
             rec["obtained_at"] = int(self._now())
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
@@ -91,6 +101,10 @@ class TokenStore:
     def access_token(self) -> Optional[str]:
         rec = self.load()
         return rec.get("access_token") if rec else None
+
+    def refresh_token(self) -> Optional[str]:
+        rec = self.load()
+        return rec.get("refresh_token") if rec else None
 
     def is_expired(self, skew_s: int = 120) -> bool:
         rec = self.load()
