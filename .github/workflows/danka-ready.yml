@@ -1,0 +1,11 @@
+name: danka-ready
+
+on:
+  pull_request:
+
+jobs:
+  danka-ready:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark PR ready for Danka evaluation
+        run: echo "Danka managed-service gate is enabled for this repository."
